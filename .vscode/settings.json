@@ -1,0 +1,78 @@
+{
+  "files.exclude": {
+    ".husky": true,
+    ".editorconfig": true,
+    ".lintstagedrc": true,
+    ".gitmessage.txt": true,
+    ".prettierignore": true,
+    ".prettierrc": true,
+    ".gitignore": true,
+    ".gitmodules": true,
+    "commitlint.config.ts": true,
+    "**/.next/": true,
+    "**/node_modules/": true
+  },
+  "search.exclude": {
+    "node_modules/": true,
+    "**/node_modules/": true,
+    "dist/": true,
+    "tmp/": true,
+    "**/.nx": true,
+    "**/.next/": true,
+    "**/*.lock": true
+  },
+  "workbench.colorCustomizations": {
+    "activityBar.activeFocusBorder": "#6200ff",
+    "activityBar.activeBackground": "#FFFFFF",
+    "activityBar.background": "#333333",
+    "activityBar.foreground": "#6200ff",
+    "activityBar.inactiveForeground": "#FFFFFF",
+    "editorGroup.border": "#444444",
+    "sash.hoverBorder": "#666666",
+    "sideBar.border": "#6200ff",
+    "tab.activeBorder": "#000000"
+  },
+  "editor.formatOnSave": true,
+  "prettier.configPath": ".prettierrc",
+  "prettier.printWidth": 120,
+  "prettier.trailingComma": "all",
+  "tailwindCSS.experimental.classRegex": ["clsx\\(([^)]*)\\)", "\"([^\"]*)\""],
+  "tailwindCSS.files.exclude": [
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/.hg/**",
+    "**/.svn/**",
+    "**/.next/**",
+    "**/tmp/**",
+    "**/.cache/**"
+  ],
+  "tailwindCSS.includeLanguages": {
+    "typescript": "javascript",
+    "typescriptreact": "javascript"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "files.associations": {
+    "*html": "html",
+    "*.css": "tailwindcss"
+  },
+  "editor.quickSuggestions": {
+    "strings": true
+  }
+}

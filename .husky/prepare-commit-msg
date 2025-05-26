@@ -1,0 +1,62 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+emojies="Feat=✨
+Fix=🔨
+Chore=🍎
+Test=🧪
+Deploy=🌊
+Refactor=🏗️"
+
+YELLOW='\x1b[33m'
+MAGENTA='\x1b[35m'
+CYAN='\x1b[36m'
+NC='\033[0m' # No Color
+
+echo "${YELLOW}Formatting${NC} ${MAGENTA}commit${NC} ${CYAN}message...${NC} 😋"
+
+COMMIT_MESSAGE_FILE_PATH=$1
+
+first_line=$(head -n1 "$COMMIT_MESSAGE_FILE_PATH")
+
+# echo first_line
+if [[ $first_line =~ ^Merge|^Revert|^Amend|^Reset|^Rebase|^Tag ]]; then
+  exit 0
+fi
+
+# Remove any existing emoji and trailing space
+first_line=$(echo "$first_line" | perl -CSD -pe 's/^\p{Emoji_Presentation}\s?//')
+type=$(echo $first_line | grep -o "^[A-Za-z]*")
+start_case_type=$(echo $type | awk '{print toupper(substr($0,0,1))tolower(substr($0,2))}')
+
+if [ -z "$type" ]; then
+  echo "ERROR: Commit type is missing."
+  exit 1
+fi
+
+# Add the appropriate emoji type to the first line of the commit message
+for MAPPING in $emojies; do
+  emoji_key=$(echo $MAPPING | cut -d= -f1)
+  emoji=$(echo $MAPPING | cut -d= -f2)
+  if [ "$start_case_type" = "$emoji_key" ]; then
+    first_line=$(echo $first_line | sed "s/$type/$emoji $start_case_type/")
+    break
+  fi
+done
+
+branch_name=$(git rev-parse --abbrev-ref HEAD)
+issue_number=$(echo "$branch_name" | sed -n 's/.*issue-\([0-9]\{1,\}\).*/\1/p')
+
+commit_message=$(cat "$COMMIT_MESSAGE_FILE_PATH")
+
+if [ -n "$issue_number" ] && [ `echo "$commit_message" | grep -c "(#$issue_number)"` -eq 0 ]; then
+  body=$(echo "$commit_message" | tail -n +2)
+  
+  echo "$first_line (#$issue_number)" > "$COMMIT_MESSAGE_FILE_PATH"
+  if [ -n "$body" ]; then
+    echo "$body" >> "$COMMIT_MESSAGE_FILE_PATH"
+  fi
+else
+  echo "$first_line" > "$COMMIT_MESSAGE_FILE_PATH"
+  echo "$commit_message" | tail -n +2 >> "$COMMIT_MESSAGE_FILE_PATH"
+fi
