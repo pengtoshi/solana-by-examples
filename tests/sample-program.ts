@@ -5,7 +5,7 @@ import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web
 import { TOKEN_PROGRAM_ID, createMint, mintTo, getOrCreateAssociatedTokenAccount, getAccount } from "@solana/spl-token";
 import { assert } from "chai";
 
-describe("pengtoshi-solana-boilerplate", () => {
+describe("sample-program", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);

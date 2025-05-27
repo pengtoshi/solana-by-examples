@@ -8,7 +8,7 @@ use instructions::*;
 declare_id!("CcaQw8DK7EPSavtcQEAvW6BS4bsA2YZ8qy4XehgnJxP2");
 
 #[program]
-pub mod pengtoshi_solana_boilerplate {
+pub mod sample_program {
     use super::*;
 
     pub fn initialize(ctx: Context<InitializeVault>, mint: Pubkey) -> Result<()> {

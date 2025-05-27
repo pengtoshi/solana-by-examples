@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-pengtoshi_solana_boilerplate = "CcaQw8DK7EPSavtcQEAvW6BS4bsA2YZ8qy4XehgnJxP2"
+sample_program = "CcaQw8DK7EPSavtcQEAvW6BS4bsA2YZ8qy4XehgnJxP2"
 
 [registry]
 url = "https://api.apr.dev"

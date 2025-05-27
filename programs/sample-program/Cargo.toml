@@ -1,12 +1,12 @@
 [package]
-name = "pengtoshi-solana-boilerplate"
+name = "sample-program"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "pengtoshi_solana_boilerplate"
+name = "sample_program"
 
 [features]
 default = []
