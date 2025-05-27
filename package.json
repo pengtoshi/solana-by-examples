@@ -5,12 +5,13 @@
     "build": "anchor build",
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "test": "anchor test --skip-local-validator",
+    "test": "anchor test",
     "prepare": "npm-run-all prepare:*",
     "prepare:husky": "husky install"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.31.1"
+    "@coral-xyz/anchor": "^0.31.1",
+    "@solana/spl-token": "^0.4.13"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.2.0",
