@@ -2,8 +2,16 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { assert, expect } from "chai";
 import { SolanaWallet } from "../target/types/solana_wallet";
-import { Connection } from "@solana/web3.js";
-import { PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey, Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
+
+const requestAirdrop = async (connection: Connection, publicKey: PublicKey, lamports: number) => {
+  const sig = await connection.requestAirdrop(publicKey, lamports);
+  await connection.confirmTransaction({
+    signature: sig,
+    blockhash: (await connection.getLatestBlockhash()).blockhash,
+    lastValidBlockHeight: (await connection.getLatestBlockhash()).lastValidBlockHeight,
+  });
+};
 
 const getSolanaWalletBalance = async (connection: Connection, walletPda: PublicKey) => {
   const accountInfo = await connection.getAccountInfo(walletPda);
@@ -22,20 +30,17 @@ describe("solana-wallet", () => {
 
   const program = anchor.workspace.SolanaWallet as Program<SolanaWallet>;
 
-  let walletAccount: anchor.web3.Keypair;
+  let walletAccount: Keypair;
   const admin = provider.wallet;
-  const user = anchor.web3.Keypair.generate();
-
-  const LAMPORTS = anchor.web3.LAMPORTS_PER_SOL;
+  const user = Keypair.generate();
 
   before(async () => {
-    // Fund user
-    const tx = await provider.connection.requestAirdrop(user.publicKey, 2 * LAMPORTS);
-    await provider.connection.confirmTransaction(tx);
+    await requestAirdrop(provider.connection, admin.publicKey, 1 * LAMPORTS_PER_SOL);
+    await requestAirdrop(provider.connection, user.publicKey, 2 * LAMPORTS_PER_SOL);
   });
 
   it("Admin can initialize the wallet", async () => {
-    walletAccount = anchor.web3.Keypair.generate();
+    walletAccount = Keypair.generate();
 
     await program.methods
       .initialize()
@@ -51,20 +56,17 @@ describe("solana-wallet", () => {
   });
 
   it("Admin can deposit SOL to the vault", async () => {
-    const sig = await provider.connection.requestAirdrop(admin.publicKey, 1 * LAMPORTS);
-    await provider.connection.confirmTransaction(sig);
-
     const tx = new anchor.web3.Transaction().add(
       anchor.web3.SystemProgram.transfer({
         fromPubkey: admin.publicKey,
         toPubkey: walletAccount.publicKey,
-        lamports: 0.5 * LAMPORTS,
+        lamports: 0.5 * LAMPORTS_PER_SOL,
       }),
     );
     await provider.sendAndConfirm(tx, []);
 
     const { usable: balance } = await getSolanaWalletBalance(provider.connection, walletAccount.publicKey);
-    expect(balance).to.equal(0.5 * LAMPORTS);
+    expect(balance).to.equal(0.5 * LAMPORTS_PER_SOL);
   });
 
   it("User can deposit SOL to the vault", async () => {
@@ -72,20 +74,18 @@ describe("solana-wallet", () => {
       anchor.web3.SystemProgram.transfer({
         fromPubkey: user.publicKey,
         toPubkey: walletAccount.publicKey,
-        lamports: 0.3 * LAMPORTS,
+        lamports: 0.3 * LAMPORTS_PER_SOL,
       }),
     );
     await provider.sendAndConfirm(tx, [user]);
 
     const { usable: balance } = await getSolanaWalletBalance(provider.connection, walletAccount.publicKey);
-    expect(balance).to.equal(0.8 * LAMPORTS);
+    expect(balance).to.equal(0.8 * LAMPORTS_PER_SOL);
   });
 
   it("Admin can withdraw SOL from the vault", async () => {
-    const adminBalanceBefore = await provider.connection.getBalance(admin.publicKey);
-
     await program.methods
-      .withdraw(new anchor.BN(0.4 * LAMPORTS))
+      .withdraw(new anchor.BN(0.4 * LAMPORTS_PER_SOL))
       .accounts({
         walletAccount: walletAccount.publicKey,
         owner: admin.publicKey,
@@ -93,13 +93,13 @@ describe("solana-wallet", () => {
       .rpc();
 
     const { usable: walletBalance } = await getSolanaWalletBalance(provider.connection, walletAccount.publicKey);
-    expect(walletBalance).to.equal(0.4 * LAMPORTS);
+    expect(walletBalance).to.equal(0.4 * LAMPORTS_PER_SOL);
   });
 
   it("Should fail - User tries to withdraw SOL from the vault", async () => {
     try {
       await program.methods
-        .withdraw(new anchor.BN(0.1 * LAMPORTS))
+        .withdraw(new anchor.BN(0.1 * LAMPORTS_PER_SOL))
         .accounts({
           walletAccount: walletAccount.publicKey,
           owner: user.publicKey,
