@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-sample_program = "CcaQw8DK7EPSavtcQEAvW6BS4bsA2YZ8qy4XehgnJxP2"
+solana-wallet = "6QRjNW4qou9kZ6A1ZkVqCfGk25gxdHj81tPrkF5byTmw"
 
 [registry]
 url = "https://api.apr.dev"
