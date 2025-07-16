@@ -2140,6 +2140,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-tokens"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+]
+
+[[package]]
 name = "solana-transaction-error"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

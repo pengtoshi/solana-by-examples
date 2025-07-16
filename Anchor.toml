@@ -7,6 +7,7 @@ skip-lint = false
 
 [programs.localnet]
 solana-wallet = "6QRjNW4qou9kZ6A1ZkVqCfGk25gxdHj81tPrkF5byTmw"
+token-wallet = "D6w82MofZg4rTBcEmX1futPpnsj9Zs96MJ4Bf4su3ZhJ"
 
 [registry]
 url = "https://api.apr.dev"
