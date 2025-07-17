@@ -189,7 +189,6 @@ pub struct Withdraw<'info> {
         seeds = [b"bid", bidder.key().as_ref()], 
         bump, 
         constraint = bid_account.bidder == bidder.key() @ AuctionError::Unauthorized,
-        constraint = bid_account.amount > auction.highest_bid @ AuctionError::NoBidToWithdraw
     )]
     pub bid_account: Account<'info, BidAccount>,
 

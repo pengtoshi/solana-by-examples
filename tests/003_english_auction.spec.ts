@@ -7,7 +7,7 @@ import { createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo } fro
 import { DEFAULT_AIRDROP_AMOUNT } from "./common/constants";
 import { getUsableSOLBalance, requestAirdrop } from "./common/utils";
 
-describe.only("english-auction", () => {
+describe("english-auction", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
@@ -26,15 +26,17 @@ describe.only("english-auction", () => {
   let sellerNftTokenAccount: PublicKey;
   let auctionNftTokenAccount: PublicKey;
 
+  const STARTING_BID_AMOUNT = LAMPORTS_PER_SOL; // 1 SOL
+  const USER_BID_AMOUNT = 2 * LAMPORTS_PER_SOL; // 2 SOL
+
   before(async () => {
     await requestAirdrop(provider.connection, user.publicKey, DEFAULT_AIRDROP_AMOUNT);
     await requestAirdrop(provider.connection, user.publicKey, DEFAULT_AIRDROP_AMOUNT);
   });
 
   it("Seller initialize the auction", async () => {
-    const STARTING_BID = LAMPORTS_PER_SOL; // 1 SOL
     await program.methods
-      .initialize(new anchor.BN(STARTING_BID))
+      .initialize(new anchor.BN(STARTING_BID_AMOUNT))
       .accounts({
         auction: auctionPda,
         seller: seller.publicKey,
@@ -47,7 +49,7 @@ describe.only("english-auction", () => {
     expect(auction.isStarted).to.be.false;
     expect(auction.isEnded).to.be.false;
     expect(auction.highestBidder.equals(PublicKey.default)).to.be.true;
-    expect(Number(auction.highestBid)).to.equal(STARTING_BID);
+    expect(Number(auction.highestBid)).to.equal(STARTING_BID_AMOUNT);
   });
 
   it("Seller mint NFT", async () => {
@@ -142,14 +144,13 @@ describe.only("english-auction", () => {
   });
 
   it("User bid", async () => {
-    const bidAmount = 2 * LAMPORTS_PER_SOL; // 2 SOL
     const [bidAccountPda, _] = PublicKey.findProgramAddressSync(
       [Buffer.from("bid"), user.publicKey.toBuffer()],
       program.programId,
     );
 
     await program.methods
-      .bid(new anchor.BN(bidAmount))
+      .bid(new anchor.BN(USER_BID_AMOUNT))
       .accounts({
         auction: auctionPda,
         bidAccount: bidAccountPda,
@@ -160,39 +161,77 @@ describe.only("english-auction", () => {
 
     const auction = await program.account.auction.fetch(auctionPda);
     expect(auction.highestBidder.equals(user.publicKey)).to.be.true;
-    expect(Number(auction.highestBid)).to.equal(bidAmount);
+    expect(Number(auction.highestBid)).to.equal(USER_BID_AMOUNT);
 
     const auctionBalance = await getUsableSOLBalance(provider.connection, auctionPda);
-    expect(auctionBalance).to.equal(bidAmount);
+    expect(auctionBalance).to.equal(USER_BID_AMOUNT);
 
     const bidAccount = await program.account.bidAccount.fetch(bidAccountPda);
     expect(bidAccount.bidder.equals(user.publicKey)).to.be.true;
-    expect(Number(bidAccount.amount)).to.equal(bidAmount);
+    expect(Number(bidAccount.amount)).to.equal(USER_BID_AMOUNT);
+  });
+
+  it("User withdraw their bid", async () => {
+    const [bidAccountPda, _] = PublicKey.findProgramAddressSync(
+      [Buffer.from("bid"), user.publicKey.toBuffer()],
+      program.programId,
+    );
+
+    await program.methods
+      .withdraw()
+      .accounts({
+        auction: auctionPda,
+        bidAccount: bidAccountPda,
+        bidder: user.publicKey,
+      } as any)
+      .signers([user])
+      .rpc();
+
+    const auction = await program.account.auction.fetch(auctionPda);
+    expect(auction.highestBidder.equals(PublicKey.default)).to.be.true;
+    expect(Number(auction.highestBid)).to.equal(STARTING_BID_AMOUNT);
+
+    const bidAccount = await program.account.bidAccount.fetch(bidAccountPda);
+    expect(bidAccount.bidder.equals(user.publicKey)).to.be.true;
+    expect(Number(bidAccount.amount)).to.equal(0);
+
+    const auctionBalance = await getUsableSOLBalance(provider.connection, auctionPda);
+    expect(auctionBalance).to.equal(0);
   });
 
   it("Seller end the auction", async () => {
-    const auction = await program.account.auction.fetch(auctionPda);
-    const highestBidder = auction.highestBidder;
-    const highestBidderTokenAcc = await getOrCreateAssociatedTokenAccount(
-      provider.connection,
-      seller.payer,
-      nftMint,
-      highestBidder,
+    /* User bid again */
+    const [bidAccountPda, _] = PublicKey.findProgramAddressSync(
+      [Buffer.from("bid"), user.publicKey.toBuffer()],
+      program.programId,
     );
-    const highestBidderTokenAccount = highestBidderTokenAcc.address;
+
+    await program.methods
+      .bid(new anchor.BN(USER_BID_AMOUNT))
+      .accounts({
+        auction: auctionPda,
+        bidAccount: bidAccountPda,
+        bidder: user.publicKey,
+      } as any)
+      .signers([user])
+      .rpc();
+
+    /* Seller end the auction */
+    const userNftTokenAcc = await getOrCreateAssociatedTokenAccount(provider.connection, user, nftMint, user.publicKey);
+    const userNftTokenAccount = userNftTokenAcc.address;
 
     await program.methods
       .end()
       .accounts({
         auction: auctionPda,
         seller: seller.publicKey,
-        highestBidderTokenAccount: highestBidderTokenAccount,
+        highestBidderTokenAccount: userNftTokenAccount,
         auctionTokenAccount: auctionNftTokenAccount,
       } as any)
       .rpc();
 
     const auctionToken = await getAccount(provider.connection, auctionNftTokenAccount);
-    const highestBidderToken = await getAccount(provider.connection, highestBidderTokenAccount);
+    const highestBidderToken = await getAccount(provider.connection, userNftTokenAccount);
     expect(Number(auctionToken.amount)).to.equal(0);
     expect(Number(highestBidderToken.amount)).to.equal(1);
   });
