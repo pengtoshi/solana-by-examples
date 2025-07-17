@@ -12,7 +12,7 @@ declare_id!("C2oTbMX7GGWw4w3pmF1c4wkvyMvARg5dqPkH5TS9Niip"); // 실제 배포 �
 
     - Seller of NFT deploys this program.
     - Participants can bid by depositing SOL greater than the current highest bidder.
-    - All bidders can withdraw their bid if it is not the current highest bid.
+    - All bidders can withdraw their bid before the bidder gets the NFT.
 */
 
 #[program]
@@ -23,6 +23,7 @@ pub mod english_auction {
         ctx.accounts.auction.seller = ctx.accounts.seller.key();
         ctx.accounts.auction.is_started = false;
         ctx.accounts.auction.is_ended = false;
+        ctx.accounts.auction.starting_bid = starting_bid;
         ctx.accounts.auction.highest_bidder = Pubkey::default();
         ctx.accounts.auction.highest_bid = starting_bid;
         Ok(())
@@ -60,11 +61,13 @@ pub mod english_auction {
         require!(!ctx.accounts.auction.is_ended, AuctionError::AlreadyEnded);
         require!(
             bid_amount > ctx.accounts.auction.highest_bid,
-            AuctionError::InsufficientBid
+            AuctionError::InsufficientBidAmount
         );
 
         ctx.accounts.auction.highest_bidder = ctx.accounts.bidder.key();
         ctx.accounts.auction.highest_bid = bid_amount;
+        ctx.accounts.bid_account.bidder = ctx.accounts.bidder.key();
+        ctx.accounts.bid_account.amount = bid_amount;
 
         let cpi_context = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
@@ -78,9 +81,20 @@ pub mod english_auction {
         Ok(())
     }
 
-    // pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
-    //     Ok(())
-    // }
+    pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
+        let bid_amount = ctx.accounts.bid_account.amount;
+
+        if ctx.accounts.bid_account.bidder == ctx.accounts.auction.highest_bidder {
+            ctx.accounts.auction.highest_bidder = Pubkey::default();
+            ctx.accounts.auction.highest_bid = ctx.accounts.auction.starting_bid;
+        }
+        ctx.accounts.bid_account.amount = 0;
+
+        **ctx.accounts.auction.to_account_info().try_borrow_mut_lamports()? -= bid_amount;
+        **ctx.accounts.bidder.to_account_info().try_borrow_mut_lamports()? += bid_amount;
+
+        Ok(())
+    }
 
     pub fn end(ctx: Context<End>) -> Result<()> {
         require!(!ctx.accounts.auction.is_ended, AuctionError::AlreadyEnded);
@@ -150,14 +164,40 @@ pub struct Bid<'info> {
     #[account(mut, seeds = [b"auction", auction.seller.key().as_ref()], bump)]
     pub auction: Account<'info, Auction>,
 
+    #[account(
+        init_if_needed, 
+        payer = bidder, 
+        seeds = [b"bid", bidder.key().as_ref()], 
+        bump, 
+        space = 8 + size_of::<BidAccount>()
+    )]
+    pub bid_account: Account<'info, BidAccount>,
+
     #[account(mut)]
     pub bidder: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 }
 
-// #[derive(Accounts)]
-// pub struct Withdraw<'info> {}
+#[derive(Accounts)]
+pub struct Withdraw<'info> {
+    #[account(mut, seeds = [b"auction", auction.seller.key().as_ref()], bump)]
+    pub auction: Account<'info, Auction>,
+
+    #[account(
+        mut, 
+        seeds = [b"bid", bidder.key().as_ref()], 
+        bump, 
+        constraint = bid_account.bidder == bidder.key() @ AuctionError::Unauthorized,
+        constraint = bid_account.amount > auction.highest_bid @ AuctionError::NoBidToWithdraw
+    )]
+    pub bid_account: Account<'info, BidAccount>,
+
+    #[account(mut)]
+    pub bidder: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
 
 #[derive(Accounts)]
 pub struct End<'info> {
@@ -190,8 +230,15 @@ pub struct Auction {
     pub seller: Pubkey,
     pub is_started: bool,
     pub is_ended: bool,
+    pub starting_bid: u64,
     pub highest_bidder: Pubkey,
     pub highest_bid: u64,
+}
+
+#[account]
+pub struct BidAccount {
+    pub bidder: Pubkey,
+    pub amount: u64,
 }
 
 #[error_code]
@@ -207,9 +254,11 @@ pub enum AuctionError {
     #[msg("Auction is not ended.")]
     NotEnded,
     #[msg("Insufficient bid amount.")]
-    InsufficientBid,
+    InsufficientBidAmount,
     #[msg("Invalid token account.")]
     InvalidTokenAccount,
+    #[msg("No bid to withdraw.")]
+    NoBidToWithdraw,
     #[msg("Only NFT can be auctioned.")]
     InvalidNFT,
 }

@@ -143,11 +143,16 @@ describe.only("english-auction", () => {
 
   it("User bid", async () => {
     const bidAmount = 2 * LAMPORTS_PER_SOL; // 2 SOL
+    const [bidAccountPda, _] = PublicKey.findProgramAddressSync(
+      [Buffer.from("bid"), user.publicKey.toBuffer()],
+      program.programId,
+    );
 
     await program.methods
       .bid(new anchor.BN(bidAmount))
       .accounts({
         auction: auctionPda,
+        bidAccount: bidAccountPda,
         bidder: user.publicKey,
       } as any)
       .signers([user])
@@ -159,6 +164,10 @@ describe.only("english-auction", () => {
 
     const auctionBalance = await getUsableSOLBalance(provider.connection, auctionPda);
     expect(auctionBalance).to.equal(bidAmount);
+
+    const bidAccount = await program.account.bidAccount.fetch(bidAccountPda);
+    expect(bidAccount.bidder.equals(user.publicKey)).to.be.true;
+    expect(Number(bidAccount.amount)).to.equal(bidAmount);
   });
 
   it("Seller end the auction", async () => {
